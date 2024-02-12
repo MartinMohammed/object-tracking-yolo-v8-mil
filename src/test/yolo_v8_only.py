@@ -5,6 +5,7 @@ import sys
 from constants import VIDEO_OF_INTEREST, ALARM_COLOR
 from utils.yolo import get_bounding_box_yolo_v8
 
+
 def test_yolo_v8_only():
     detector = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
     video_capture = cv2.VideoCapture(

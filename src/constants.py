@@ -26,6 +26,5 @@ VIDEO_OF_INTEREST = "drone.mp4"
 TRACKER_TYPE = TRACKER_TYPES[1]
 
 
-
 DETECTION_TIME_INTERVAL_MS = 750
 # --------------------- Things that can be changed ---------------------

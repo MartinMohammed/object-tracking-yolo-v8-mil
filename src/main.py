@@ -17,11 +17,13 @@ from constants import (
     ALARM_COLOR,
     DETECTION_TIME_INTERVAL_MS,
     ONLY_DETECTION,
-    DETECTOR_INTEREST_LABEL
+    DETECTOR_INTEREST_LABEL,
 )
 from utils.opencv_window import display_default_info_on_frame, display_additional_labels
 from ultralytics import YOLO
+
 (MAJOR_VER, MINOR_VER, SUBMINOR_VER) = (cv2.__version__).split(".")
+
 
 # ----------------------------------------------------------------------
 def main(
@@ -70,7 +72,7 @@ def main(
         p_local, l_local, v_local = mt_local
         class_name = get_name_from_class_id(model=detector, class_id=l_local)
         object_match = l_local == DETECTOR_INTEREST_LABEL
-        if object_match: 
+        if object_match:
             bbox, _ = bbox_local, mt_local
             p, l, _ = p_local, l_local, v_local
         else:
@@ -118,7 +120,6 @@ def main(
                     # Re-init tracker with new bounding box from detector.
                     tracker.init(image=frame, boundingBox=bbox)
 
-
                 addit_labels[1] = f"Found {class_name}: {v_local}s"
                 addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
 
@@ -146,9 +147,7 @@ def main(
             # Tracking success
             p1, p2 = get_points_from_bbox(bbox=bbox, xywh_format=True)
             label_text = f"p={p:.2f}, l={l}" if p and l else ""
-            draw_rectangle_with_label(
-                frame=frame, p1=p1, p2=p2, label_text=label_text
-            )
+            draw_rectangle_with_label(frame=frame, p1=p1, p2=p2, label_text=label_text)
         else:
             addit_labels[1] = "Tracking failure detected."
             addit_labels_c[1] = ALARM_COLOR
