@@ -18,6 +18,7 @@ Currently, with the MIL tracker and YOLOv8 nano model, we achieve an average tot
 
 ## How to set up this project:
 
+- Make sure at least python3.9.5 is installed
 - Update pip.
 - Install pip packages from `requirements.txt`.
 - Activate virtual environment.
