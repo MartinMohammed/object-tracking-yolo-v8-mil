@@ -95,7 +95,7 @@ def draw_rectangle_with_label(
 
 def get_tracker(
     minor_ver: str, tracker_type: str
-) -> Union[cv2.TrackerMIL, cv2.TrackerCSRT]:
+):
     """
     Gets an instance of OpenCV tracker based on the provided tracker type.
 
