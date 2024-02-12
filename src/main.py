@@ -20,7 +20,7 @@ from constants import (
     MISSED_DETECTIONS_UNTIL_LOST,
     DETECTOR_INTEREST_LABEL,
     REDETECTION_INTERVAL_MS,
-    P,
+    CONFIDENCE_INTERVAL,
 )
 from utils.opencv_window import display_default_info_on_frame, display_additional_labels
 from ultralytics import YOLO
@@ -33,7 +33,7 @@ def main(
     detection_interval: int,
     redetection_interval_ms: int,
     missed_detections_until_lost: int,
-    p: float,
+    confidence_interval: float,
     only_detection: bool = False,
 ):
     if only_detection:
@@ -126,7 +126,7 @@ def main(
                 bbox_local, mt_local = result
                 p_local, l_local, v_local = mt_local
                 class_name = get_name_from_class_id(model=detector, class_id=l_local)
-                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= P
+                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= confidence_interval
                 if object_match:
                     missed_detections_counter = 0
                     lost_timer = None
@@ -217,7 +217,7 @@ def main(
                 bbox_local, mt_local = result
                 p_local, l_local, v_local = mt_local
                 class_name = get_name_from_class_id(model=detector, class_id=l_local)
-                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= P
+                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= confidence_interval
                 if object_match:
                     bbox, _ = bbox_local, mt_local
                     p, l, _ = p_local, l_local, v_local
@@ -241,6 +241,6 @@ if __name__ == "__main__":
         detection_interval=DETECTION_TIME_INTERVAL_MS,
         redetection_interval_ms=REDETECTION_INTERVAL_MS,
         missed_detections_until_lost=MISSED_DETECTIONS_UNTIL_LOST,
-        p=P,
+        confidence_interval=CONFIDENCE_INTERVAL,
         only_detection=ONLY_DETECTION,
     )
