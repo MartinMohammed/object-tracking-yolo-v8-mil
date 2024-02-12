@@ -46,3 +46,5 @@ DETECTION_TIME_INTERVAL_MS = 750
 - The YOLOv8 nano model is pre-trained on all sorts of objects but not specifically on drones. Training the model specifically on drones using transfer learning, utilizing existing weights and data, might result in more accurate and faster detection.
 - The video has high resolution, but we actually only need 720p resolution. Reducing the resolution would make the algorithms run faster, resulting in faster average detection time and higher fps for tracking.
 - The code runs faster, and metrics improve when running with GPU.
+- Presently, the system operates effectively with a solitary object; otherwise, it becomes perplexed.
+- It exclusively renders bounding boxes around entities identified as airplanes, disregarding all other objects. One potential resolution entails displaying rectangles for all objects while maintaining the tracking focus solely on a single airplane.
