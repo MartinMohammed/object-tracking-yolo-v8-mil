@@ -132,7 +132,7 @@ def main(
         addit_labels_c[1] = DEFAULT_COLOR
     else:
         addit_labels[1] = "Inital bbox was not found by Yolov8."
-        addit_labels_c = ALARM_COLOR
+        addit_labels_c[1] = ALARM_COLOR
         bbox = get_bounding_box_roi(frame=frame)
 
     # Initialize tracker with first frame and bounding box
@@ -189,8 +189,9 @@ def main(
         if ok:
             # Tracking success
             p1, p2 = get_points_from_bbox(bbox=bbox, xywh_format=True)
+            label_text = f"p={p:.2f}, l={l}" if p and l else ""
             draw_rectangle_with_label(
-                frame=frame, p1=p1, p2=p2, label_text=f"p={p:.2f}, l={l}"
+                frame=frame, p1=p1, p2=p2, label_text=label_text
             )
         else:
             addit_labels[1] = "Tracking failure detected."
