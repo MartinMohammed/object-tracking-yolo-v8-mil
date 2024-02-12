@@ -28,17 +28,22 @@ Currently, with the CSRT tracker and YOLOv8 nano model, we achieve an average to
 Everything you can change can be found in `constants.py`.
 
 ```python
+ONLY_DETECTION = False
+
 BOUNDING_BOX_COLOR = (255, 0, 0)
 ALARM_COLOR = (0, 0, 255)
 DEFAULT_COLOR = (50, 170, 50)
 
-VIDEO_OF_INTEREST = "drone.mp4"
+VIDEO_OF_INTEREST = "demo-1.mp4"
 
-TRACKER_TYPE = TRACKER_TYPES[7]  # 2 (Faster but less accurate), 7
+# 1 (lower fps on avg 30 but more accurate), 7
+TRACKER_TYPE = TRACKER_TYPES[1]
 
-ONLY_DETECTION = False
+DETECTION_TIME_INTERVAL_MS = 1000
+REDETECTION_INTERVAL_MS = 300
+MISSED_DETECTIONS_UNTIL_LOST = 10
 
-DETECTION_TIME_INTERVAL_MS = 750
+P = 0.6
 ```
 
 ## Limitations of the project and how to fix them:

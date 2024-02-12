@@ -17,7 +17,10 @@ from constants import (
     ALARM_COLOR,
     DETECTION_TIME_INTERVAL_MS,
     ONLY_DETECTION,
+    MISSED_DETECTIONS_UNTIL_LOST,
     DETECTOR_INTEREST_LABEL,
+    REDETECTION_INTERVAL_MS, 
+    P
 )
 from utils.opencv_window import display_default_info_on_frame, display_additional_labels
 from ultralytics import YOLO
@@ -28,10 +31,15 @@ from ultralytics import YOLO
 # ----------------------------------------------------------------------
 def main(
     detection_interval: int,
+    redetection_interval_ms: int, 
+    missed_detections_until_lost: int,
+    p: float,  
     only_detection: bool = False,
 ):
     if only_detection:
         test_yolo_v8_only()
+
+    detection_interval_orig = detection_interval
 
     # Load an official or custom model
     detector = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
@@ -79,7 +87,7 @@ def main(
             # Get user selection.
             bbox = get_bounding_box_roi(frame=frame)
 
-        addit_labels[1] = f"Found {class_name}: {v_local}s"
+        addit_labels[1] = f"Found {class_name} ({p_local:.2f}): {v_local}s"
         addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
 
     else:
@@ -91,6 +99,11 @@ def main(
     tracker.init(image=frame, boundingBox=bbox)
 
     detection_timer_start = time.time()
+    lost_timer = None
+
+    missed_detections_counter = 0
+    object_is_lost = False
+    
     while True:
         # Read a new frame
         ok, frame = video_capture.read()
@@ -104,8 +117,8 @@ def main(
 
         # Start timer
         timer = cv2.getTickCount()
-
         detection_timer_end = time.time()
+         
         time_went_by_ms = 1000 * (detection_timer_end - detection_timer_start)
         if time_went_by_ms >= detection_interval:
             result = get_bounding_box_yolo_v8(frame=frame, detector=detector)
@@ -113,20 +126,25 @@ def main(
                 bbox_local, mt_local = result
                 p_local, l_local, v_local = mt_local
                 class_name = get_name_from_class_id(model=detector, class_id=l_local)
-                object_match = l_local == DETECTOR_INTEREST_LABEL
+                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= P
                 if object_match:
+                    missed_detections_counter = 0 
+                    lost_timer = None
+                    object_is_lost = False
+                    detection_interval = detection_interval_orig
+
                     bbox, _ = bbox_local, mt_local
                     p, l, _ = p_local, l_local, v_local
                     # Re-init tracker with new bounding box from detector.
                     tracker.init(image=frame, boundingBox=bbox)
-
-                addit_labels[1] = f"Found {class_name}: {v_local}s"
+                else:
+                    missed_detections_counter += 1
+                addit_labels[1] = f"Found {class_name} ({p_local:.2f}): {v_local}s"
                 addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
-
             else:
-                addit_labels[1] = "No Object detected"
+                missed_detections_counter += 1
+                addit_labels[1] = f"No Object detected ({missed_detections_counter})"
                 addit_labels_c[1] = ALARM_COLOR
-            # Reset timer.
             detection_timer_start = detection_timer_end
         else:
             addit_labels[
@@ -134,30 +152,45 @@ def main(
             ] = f"Next detection in {round((detection_interval - time_went_by_ms) / 1000, 2)}s."
             addit_labels_c[0] = DEFAULT_COLOR
 
-        # Update tracker
-        ok, bbox = tracker.update(
-            frame
-        )  # measure_time("Update Tracker", tracker.update, frame)
+        if missed_detections_counter == missed_detections_until_lost:
+            object_is_lost = True
+            detection_interval = redetection_interval_ms # 200 ms
+            lost_timer = time.time()
 
-        # Calculate Frames per second (FPS)
-        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
+        if not object_is_lost:
+            # Update tracker
+            ok, bbox = tracker.update(
+                frame
+            )  # measure_time("Update Tracker", tracker.update, frame)
 
-        # Draw bounding box - failed to predict the next position of the object.
-        if ok:
-            # Tracking success
-            p1, p2 = get_points_from_bbox(bbox=bbox, xywh_format=True)
-            label_text = f"p={p:.2f}, l={l}" if p and l else ""
-            draw_rectangle_with_label(frame=frame, p1=p1, p2=p2, label_text=label_text)
+            # Draw bounding box - failed to predict the next position of the object.
+            if ok:
+                # Tracking success
+                p1, p2 = get_points_from_bbox(bbox=bbox, xywh_format=True)
+                label_text = f"p={p:.2f}, l={l}" if p and l else ""
+                draw_rectangle_with_label(frame=frame, p1=p1, p2=p2, label_text=label_text)
+            else:
+                addit_labels[1] = "Tracking failure detected."
+                addit_labels_c[1] = ALARM_COLOR
+            
+            # Calculate Frames per second (FPS)
+            fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
+            display_default_info_on_frame(frame=frame, tracker_type=TRACKER_TYPE, fps=fps)
+            display_additional_labels(
+                frame=frame,
+                addit_labels=addit_labels,
+                addit_labels_c=addit_labels_c,
+            )
         else:
-            addit_labels[1] = "Tracking failure detected."
-            addit_labels_c[1] = ALARM_COLOR
-
-        display_default_info_on_frame(frame=frame, tracker_type=TRACKER_TYPE, fps=fps)
-        display_additional_labels(
-            frame=frame,
-            addit_labels=addit_labels,
-            addit_labels_c=addit_labels_c,
-        )
+            cv2.putText(
+                frame,
+                f"Object is lost ({round(time.time() - lost_timer, 2)}s)",
+                (100, 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                ALARM_COLOR,
+                2,
+            )
 
         # Display result
         cv2.imshow("Tracking", frame)
@@ -180,18 +213,18 @@ def main(
                 bbox_local, mt_local = result
                 p_local, l_local, v_local = mt_local
                 class_name = get_name_from_class_id(model=detector, class_id=l_local)
-                object_match = l_local == DETECTOR_INTEREST_LABEL
+                object_match = l_local == DETECTOR_INTEREST_LABEL and p_local >= P
                 if object_match:
                     bbox, _ = bbox_local, mt_local
                     p, l, _ = p_local, l_local, v_local
 
                     # Reinit tracker
                     tracker.init(image=frame, boundingBox=bbox)
-                addit_labels[1] = f"Found {class_name}: {v_local}s"
+                addit_labels[1] = f"Found {class_name} ({p_local:.2f}): {v_local}s"
                 addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
 
             else:
-                addit_labels[1] = "No Object detected"
+                addit_labels[1] = f"No Object detected ({missed_detections_counter})"
                 addit_labels_c[1] = ALARM_COLOR
 
         # Exit if ESC pressed
@@ -200,4 +233,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main(detection_interval=DETECTION_TIME_INTERVAL_MS, only_detection=ONLY_DETECTION)
+    main(detection_interval=DETECTION_TIME_INTERVAL_MS, redetection_interval_ms = REDETECTION_INTERVAL_MS,  missed_detections_until_lost = MISSED_DETECTIONS_UNTIL_LOST, p=P, only_detection=ONLY_DETECTION)
