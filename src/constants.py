@@ -17,8 +17,8 @@ DEFAULT_COLOR = (50, 170, 50)
 
 VIDEO_OF_INTEREST = "drone.mp4"
 
-# 2 (Faster but less accurate), 7
-TRACKER_TYPE = TRACKER_TYPES[7]
+# 1, 7
+TRACKER_TYPE = TRACKER_TYPES[1]
 
 ONLY_DETECTION = False
 
