@@ -72,3 +72,24 @@ def parse_yolov8_results(
             detection_speed,
         )
     return None
+
+
+def get_name_from_class_id(model, class_id: int) -> str:
+    """
+    Get the name corresponding to a class ID from the model's list of names.
+
+    Args:
+        model: The YOLO model object containing a list of class names.
+        class_id (int): The integer class ID for which to retrieve the name.
+
+    Returns:
+        str: The name corresponding to the given class ID.
+
+    Raises:
+        ValueError: If the class ID is not a valid integer between 0 and 79 inclusive.
+    """
+    if not isinstance(class_id, int):
+        raise ValueError("Class ID must be an integer.")
+    if not (0 <= class_id <= 79):
+        raise ValueError("Class ID must be between 0 and 79 inclusive.")
+    return model.names[class_id]

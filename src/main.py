@@ -8,9 +8,8 @@ from utils.opencv import (
     draw_rectangle_with_label,
 )
 import time
-
-from utils.yolo import get_bounding_box_yolo_v8
-
+from utils.yolo import get_bounding_box_yolo_v8, get_name_from_class_id
+from test.yolo_v8_only import test_yolo_v8_only
 from constants import (
     VIDEO_OF_INTEREST,
     TRACKER_TYPE,
@@ -18,68 +17,11 @@ from constants import (
     ALARM_COLOR,
     DETECTION_TIME_INTERVAL_MS,
     ONLY_DETECTION,
+    DETECTOR_INTEREST_LABEL
 )
 from utils.opencv_window import display_default_info_on_frame, display_additional_labels
-
 from ultralytics import YOLO
-
 (MAJOR_VER, MINOR_VER, SUBMINOR_VER) = (cv2.__version__).split(".")
-
-
-def test_yolo_v8_only():
-    detector = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
-    video_capture = cv2.VideoCapture(
-        os.path.join("assets", "videos", VIDEO_OF_INTEREST)
-    )
-
-    # Exit if video_capture not opened.
-    if not video_capture.isOpened():
-        print("Could not open video_capture")
-        sys.exit()
-
-    # Read first frame.
-    ok, frame = video_capture.read()
-
-    if not ok:
-        print("Cannot read video_capture file")
-        sys.exit()
-
-    while True:
-        # Read a new frame
-        ok, frame = video_capture.read()
-
-        # Cannot read frame.
-        if not ok:
-            break
-
-        result = get_bounding_box_yolo_v8(
-            frame=frame, detector=detector, xywh_format=False
-        )
-        if result is not None:
-            bbox, _ = result
-            cv2.rectangle(
-                img=frame,
-                pt1=tuple(bbox[:2]),
-                pt2=tuple(bbox[2:]),
-                color=(0, 255, 0),
-                thickness=1,
-            )
-        else:
-            cv2.putText(
-                frame,
-                "No bounding box was detected",
-                (100, 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.75,
-                ALARM_COLOR,
-                2,
-            )
-
-        cv2.imshow("Detection YoloV8 Only", frame)
-        k = cv2.waitKey(1) & 0xFF
-        if k == 27:
-            break
-
 
 # ----------------------------------------------------------------------
 def main(
@@ -117,19 +59,27 @@ def main(
     # Classification label (int)
     l = None
 
-    # Detection Speed (s)
-    v = None
-
     # Keep bbox in the format of (x, y, w, h)
     bbox = None
+
     result = get_bounding_box_yolo_v8(
         frame=frame, detector=detector
     )  # or get_bounding_box_roi(frame=frame)
     if result is not None:
-        bbox, mt = result
-        p, l, v = mt
-        addit_labels[1] = f"Detection time: {v}s."
-        addit_labels_c[1] = DEFAULT_COLOR
+        bbox_local, mt_local = result
+        p_local, l_local, v_local = mt_local
+        class_name = get_name_from_class_id(model=detector, class_id=l_local)
+        object_match = l_local == DETECTOR_INTEREST_LABEL
+        if object_match: 
+            bbox, _ = bbox_local, mt_local
+            p, l, _ = p_local, l_local, v_local
+        else:
+            # Get user selection.
+            bbox = get_bounding_box_roi(frame=frame)
+
+        addit_labels[1] = f"Found {class_name}: {v_local}s"
+        addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
+
     else:
         addit_labels[1] = "Inital bbox was not found by Yolov8."
         addit_labels_c[1] = ALARM_COLOR
@@ -158,16 +108,22 @@ def main(
         if time_went_by_ms >= detection_interval:
             result = get_bounding_box_yolo_v8(frame=frame, detector=detector)
             if result is not None:
-                bbox, mt = result
+                bbox_local, mt_local = result
+                p_local, l_local, v_local = mt_local
+                class_name = get_name_from_class_id(model=detector, class_id=l_local)
+                object_match = l_local == DETECTOR_INTEREST_LABEL
+                if object_match:
+                    bbox, _ = bbox_local, mt_local
+                    p, l, _ = p_local, l_local, v_local
+                    # Re-init tracker with new bounding box from detector.
+                    tracker.init(image=frame, boundingBox=bbox)
 
-                p, l, v = mt
-                addit_labels[1] = f"Detection time: {v}s."
-                addit_labels_c[1] = DEFAULT_COLOR
 
-                # Re-init tracker with new bounding box from detector.
-                tracker.init(image=frame, boundingBox=bbox)
+                addit_labels[1] = f"Found {class_name}: {v_local}s"
+                addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
+
             else:
-                addit_labels[1] = "No bounding box was detected."
+                addit_labels[1] = "No Object detected"
                 addit_labels_c[1] = ALARM_COLOR
             # Reset timer.
             detection_timer_start = detection_timer_end
@@ -222,14 +178,21 @@ def main(
             # Reset timer:
             detection_timer_start = time.time()
             if result is not None:
-                bbox, mt = result
-                p, l, v = mt
-                # Reinit tracker
-                tracker.init(image=frame, boundingBox=bbox)
-                addit_labels[1] = f"Detection time: {mt[2]}s."
-                addit_labels_c[1] = DEFAULT_COLOR
+                bbox_local, mt_local = result
+                p_local, l_local, v_local = mt_local
+                class_name = get_name_from_class_id(model=detector, class_id=l_local)
+                object_match = l_local == DETECTOR_INTEREST_LABEL
+                if object_match:
+                    bbox, _ = bbox_local, mt_local
+                    p, l, _ = p_local, l_local, v_local
+
+                    # Reinit tracker
+                    tracker.init(image=frame, boundingBox=bbox)
+                addit_labels[1] = f"Found {class_name}: {v_local}s"
+                addit_labels_c[1] = DEFAULT_COLOR if object_match else ALARM_COLOR
+
             else:
-                addit_labels[1] = "No bounding box was detected."
+                addit_labels[1] = "No Object detected"
                 addit_labels_c[1] = ALARM_COLOR
 
         # Exit if ESC pressed
