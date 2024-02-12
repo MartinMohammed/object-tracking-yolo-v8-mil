@@ -10,11 +10,11 @@ On the top left side, we can see the time it took for the last detection in seco
 
 ## How this project works:
 
-We utilize the YOLOv8 pre-trained nano model for the detection of various classes, among which the category of aircraft is included. It returns a bounding box of the image. We have a `detection_interval` mode that detects at a given interval, let's say every 2 seconds. During the time when the detector is on standby, we use the CSRT tracker, which takes in a bounding box as input and tracks the object within the frames.
+We utilize the YOLOv8 pre-trained nano model for the detection of various classes, among which the category of aircraft is included. It returns a bounding box of the image. We have a `detection_interval` mode that detects at a given interval, let's say every 2 seconds. During the time when the detector is on standby, we use the MIL tracker, which takes in a bounding box as input and tracks the object within the frames. The MIL tracker provides more accuracy in tracking, although it has an average frame rate of 30 FPS.
 
 ## Performance so far:
 
-Currently, with the CSRT tracker and YOLOv8 nano model, we achieve an average total detection time of 0.15 seconds and 50 fps with tracking. Please note that these metrics apply to my MacBook. More about the limitations in the sections below.
+Currently, with the MIL tracker and YOLOv8 nano model, we achieve an average total detection time of 0.15 seconds and 30 FPS with tracking. Please note that these metrics apply to my MacBook. More about the limitations in the sections below.
 
 ## How to set up this project:
 
